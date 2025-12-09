@@ -1,77 +1,105 @@
-# Resource Justification – Article CMS
+# Resource Justification – Article CMS Deployment
 
-## Option 1 – Virtual Machine (VM)
+This document evaluates two Azure deployment options for the Article CMS web application:  
+**Azure Virtual Machine (VM)** vs **Azure App Service**.  
+The analysis includes cost, scalability, availability, workflow, and overall suitability.
+
+---
+
+## Option 1 – Azure Virtual Machine (VM)
 
 ### Cost
-- VM size: e.g. Standard B1ls in East US.
-- You pay for **compute 24/7**, whether the app is busy or idle.
-- You may also pay separately for disk storage, backup, and bandwidth.
-- This can be **cheap at small scale** (one small VM), but costs rise if you need multiple VMs for redundancy or scaling.
+- You pay for the VM **24/7**, even when the app is idle.
+- Additional cost for disk storage, bandwidth, backup, and monitoring.
+- Example Cost:
+  - Standard B1ls VM in East US: **~$5–$10/month**
+  - To ensure high availability (2+ VMs + Load Balancer): **$30–$50+/month**
 
 ### Scalability
-- Scaling is **manual**: to handle more load you must resize the VM or create additional VMs and configure load balancing yourself.
-- Vertical scaling (bigger VM) usually causes **downtime** while resizing.
-- Horizontal scaling (more VMs) requires setting up a **load balancer** and managing more instances.
+- **Manual scaling**
+  - Resize VM = downtime
+  - Scale out = configure load balancer + manage multiple VMs
+- More maintenance effort during high traffic periods
 
 ### Availability
-- You are responsible for **keeping the VM healthy** (OS patches, security updates, reboots).
-- For higher availability you need:
-  - at least **2+ VMs** in an availability set or across zones
-  - plus a load balancer.
-- If the single VM fails, the app is unavailable until you fix it.
+- You must design your own HA environment:
+  - Availability sets or zone redundancy
+  - Manual failover handling
+- If a single VM fails → App downtime
 
-### Workflow (Deployment & Operations)
-- You manage the **OS**, **runtime**, and **web server** (NGINX / gunicorn, etc.).
-- Typical flow:
-  1. SSH into VM
-  2. Pull code from GitHub
-  3. Manage Python virtual environment, dependencies, environment variables
-  4. Restart the app / services manually
-- More control and flexibility, but **more operational overhead** and room for human error.
+### Deployment Workflow
+- Manual configuration:
+  - SSH into server
+  - Configure Python, Flask, dependencies, security patches
+- Deployment requires manual Git pulls, restarting services
+- **High operational overhead**, but full control of OS
 
 ---
 
 ## Option 2 – Azure App Service (Web App)
 
 ### Cost
-- Uses a **hosting plan** (e.g. Free F1 or B1/B2 in Basic/App Service Plan).
-- You pay for the **App Service Plan**, not per app (multiple apps can share one plan).
-- For small to medium apps, App Service is often **cheaper overall** than running and maintaining multiple VMs, especially when you factor in admin time.
-- Built-in features (SSL, deployment slots in higher tiers, monitoring) are included in the plan.
+- Pricing based on App Service Plan, not runtime hours
+- Several features included: logging, SSL, platform patching
+- Example Cost:
+  - Free Tier (F1) for testing: **$0**
+  - Basic Tier (B1): **~$9–$20/month** with scaling and SLA
 
 ### Scalability
-- Supports **automatic horizontal scaling** based on rules (CPU, requests, schedule etc. in non-free tiers).
-- Scale out and in through Azure Portal or automatically, with **no manual server configuration**.
-- No need to manage individual VMs; Azure handles the underlying infrastructure.
+- **Automatic horizontal scaling**
+- Azure manages instances and traffic distribution
+- Zero-downtime scaling in supported tiers
 
 ### Availability
-- The platform provides **built-in redundancy** at the App Service Plan level.
-- Azure automatically replaces unhealthy instances and distributes traffic.
-- You don’t patch the OS or runtime; Microsoft maintains the underlying environment, which reduces the risk of downtime from misconfiguration.
+- Built-in redundancy: Azure replaces unhealthy instances automatically
+- Microsoft patches OS/runtime — fewer service failures
+- Higher tiers offer SLA-backed uptime guarantees
 
-### Workflow (Deployment & Operations)
-- Deployment is integrated with **GitHub Actions** / Azure DevOps:
-  - Push to GitHub → pipeline builds and deploys automatically.
-- Environment variables are managed through **Application Settings** in the portal.
-- Monitoring and logs are available directly from the App Service (Log Stream, Application Insights if enabled).
-- Overall, the workflow is **simpler, repeatable, and more “DevOps-friendly”** than logging into a VM.
+### Deployment Workflow
+- Integrated CI/CD from GitHub
+- App settings configured in Azure Portal
+- No need to manage OS or infrastructure
+- **Much simpler**, more DevOps-friendly workflow
 
 ---
 
-## Comparison and Final Choice
+## Comparison
 
-| Aspect       | VM                                           | Azure App Service                            |
-|-------------|----------------------------------------------|----------------------------------------------|
-| Cost        | Pay per VM 24/7; extra cost for redundancy   | Pay per plan; good value for small/medium apps |
-| Scalability | Manual resizing / extra VMs + load balancer  | Built-in scale out/in, no server management  |
-| Availability| You design HA with multiple VMs + LB         | Platform provides redundancy automatically   |
-| Workflow    | Manual SSH, updates, deployments             | GitHub deployment, portal-based management   |
+| Attribute     | Azure VM | Azure App Service |
+|--------------|----------|------------------|
+| Cost | Pay per VM 24/7 + infrastructure | Cheaper for small/medium apps, included platform features |
+| Scalability | Manual scaling, downtime likely | Auto-scaling built-in |
+| Availability | You must design redundancy | Platform redundancy provided |
+| Workflow | Full OS control, manual deployments | Automated deployments, minimal admin |
 
-### Chosen Option: **Azure App Service**
+---
 
-For this CMS project I chose to deploy the application on **Azure App Service** instead of a VM.
+## Final Choice: **Azure App Service**
 
-Azure App Service gives me **lower operational effort and better scalability** for this small web application. I do not need to manage the underlying OS, patches, or web server configuration, and I can integrate automatic deployments from GitHub. In higher tiers it can automatically scale out to handle more load without manual VM management.  
+Azure App Service is the best fit for this project because:
 
-A VM would give me more low-level control, but for this project that extra control is not necessary and would increase maintenance overhead and complexity. Therefore, App Service is the more appropriate and cost-effective option.
+- It requires **lower operational effort** than a VM
+- It offers **auto-scaling**, load balancing, and redundancy **by default**
+- GitHub integration simplifies continuous deployment
+- Cheaper and easier to manage for this small CMS application
 
+A VM would provide deeper control of the OS and environment, but that level of control is not required for this project and would increase maintenance costs and complexity.
+
+---
+
+## When Would I Change This Decision?
+
+I would consider switching to a **Virtual Machine** if:
+
+- The app required **custom OS configuration** or unsupported frameworks
+- Advanced networking or security customizations were needed
+- The application required **dedicated compute hardware** for heavy workloads
+- We needed specialized server-level controls not offered by App Service
+
+In those scenarios, a VM would provide better flexibility despite the higher operational burden.
+
+---
+
+### Conclusion
+
+For the current Article CMS project, **Azure App Service is the most cost-effective, scalable, and operationally simple solution** while still providing strong reliability and performance.
