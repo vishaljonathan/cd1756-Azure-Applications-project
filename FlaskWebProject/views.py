@@ -62,20 +62,31 @@ def post(id):
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
+
     form = LoginForm()
+
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
+
+        # 🔴 FAILED LOGIN – log invalid attempt
         if user is None or not user.check_password(form.password.data):
+            app.logger.warning("Invalid login attempt.")
             flash('Invalid username or password')
             return redirect(url_for('login'))
+
+        # 🟢 SUCCESSFUL LOGIN – log success
         login_user(user, remember=form.remember_me.data)
+        app.logger.info(f"{user.username} logged in successfully")
+
         next_page = request.args.get('next')
         if not next_page or url_parse(next_page).netloc != '':
             next_page = url_for('home')
         return redirect(next_page)
+
     session["state"] = str(uuid.uuid4())
     auth_url = _build_auth_url(scopes=Config.SCOPE, state=session["state"])
     return render_template('login.html', title='Sign In', form=form, auth_url=auth_url)
+
 
 @app.route(Config.REDIRECT_PATH)  # Its absolute URL must match your app's redirect_uri set in AAD
 def authorized():
